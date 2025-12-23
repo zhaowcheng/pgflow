@@ -1,0 +1,15 @@
+# Byte-compiled / optimized / DLL files / venv
+__pycache__/
+*.py[cod]
+*$py.class
+venv/
+
+# IDE config files
+.vscode/
+.idea/
+
+# workdir
+workdir/
+
+# env.yml
+env.yml
