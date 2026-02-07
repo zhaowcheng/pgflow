@@ -27,18 +27,18 @@ def copy_deps(
 def set_rpath(
     node: Node,
     elfdir: str | PurePosixPath,
-    libdir: str | PurePosixPath
+    libdirs: str | PurePosixPath
 ) -> CommandResult:
     """
     把 `elfdir` 目录中的所有 elf 文件的 RPATH 设置为 `libdir`（相对路径）。
 
     :param node: 执行节点。
     :param elfdir: elf 文件目录。
-    :param libdir: 依赖库目录。
+    :param libdirs: 依赖库目录列表（以`:`分割）。
     :return: 脚本输出。
     """
     return node.exec_script('scripts/set_rpath.sh',
-                            argstr=f'{elfdir} {libdir}')
+                            argstr=f'{elfdir} {libdirs}')
 
 
 def set_interp(

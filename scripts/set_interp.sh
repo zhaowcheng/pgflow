@@ -1,5 +1,7 @@
-#!/bin/bash -e
+#!/usr/bin/env bash
 # Set the interpreter of all elf files in `ELFDIR` to `INTERP`.
+
+set -e
 
 PROGNAME=$(basename $0)
 if [[ $# != 2 ]]; then
