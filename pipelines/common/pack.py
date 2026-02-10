@@ -13,6 +13,9 @@ class pack(Pipeline):
     """
     打包流水线基类。
     """
+    # 程序名
+    PROGNAME = None    
+
     class Options(Pipeline.Options):
         """
         流水线参数表。
@@ -68,7 +71,6 @@ class pack(Pipeline):
 
     def archive(
         self, 
-        progname: str, 
         ardir: str | PurePosixPath,
         suffix: str = ''
     ) -> None:
@@ -79,7 +81,7 @@ class pack(Pipeline):
         :param ardir: 要归档的目录。
         :param suffix: 包名后缀（名称和 `.tar.gz` 之间）
         """
-        tarname = f'{progname}-{self.version}-{self.options.system}{suffix}.tar.gz'
+        tarname = f'{self.PROGNAME}-{self.version}-{self.options.system}{suffix}.tar.gz'
         self.node.exec(f'tar czvf {tarname} -C {ardir} .')
         tarpath = self.node.cwd.joinpath(tarname)
         self.node.getfile(tarpath, self.cwd)
@@ -112,20 +114,13 @@ class pack_c(pack):
         """
         super().teardown()
 
-    def archive(
-        self, 
-        progname: str, 
-        ardir: str | PurePosixPath
-    ) -> None:
+    def archive(self) -> None:
         """
         归档。
-
-        :param progname: 程序名。
-        :param ardir: 要归档的目录。
         """
         with self.nixenv():
             suffix = self.node.exec('getconf GNU_LIBC_VERSION').replace(' ', '')
-        super().archive(progname, ardir, suffix=f'-{suffix}')
+        super().archive(self.instdir, suffix=f'-{suffix}')
 
     def handle_deps(self) -> None:
         """
@@ -135,15 +130,15 @@ class pack_c(pack):
             with self.nixenv():
                 libdir = instdir.joinpath('lib')
                 bindir = instdir.joinpath('bin')
-                copieddir = libdir.joinpath('copied')
-                self.node.exec(f'mkdir -p {copieddir}')
-                copy_deps(self.node, instdir, copieddir)
-                set_rpath(self.node, instdir, f'{libdir}:{copieddir}')
-                libc_path = copieddir.joinpath("libc.so.6")
+                destdir = libdir.joinpath('sys')
+                self.node.exec(f'mkdir -p {destdir}')
+                copy_deps(self.node, instdir, destdir, excludedirs=f'{libdir}')
+                set_rpath(self.node, instdir, f'{libdir}:{destdir}')
+                libc_path = destdir.joinpath("libc.so.6")
                 interp_path = self.node.exec(f'patchelf --print-interpreter {libc_path}')
                 interp_name = interp_path.split('/')[-1]
-                self.node.exec(f'cp {interp_path} {copieddir}')
-                set_interp(self.node, bindir, f'./lib/copied/{interp_name}')
+                self.node.exec(f'cp {interp_path} {destdir}')
+                set_interp(self.node, bindir, f'./lib/sys/{interp_name}')
         # 拷贝被打包程序的依赖
         _copy_deps(self.instdir)
         # 创建配置脚本和说明
@@ -157,12 +152,13 @@ class pack_c(pack):
         self.node.exec(f'mkdir -p {patchelf_libdir}')
         self.node.exec(f'cp -v {patchelf_bin} {patchelf_bindir}')
         _copy_deps(patchelf_parent)
-        self.node.putfile('scripts/setup.sh', scripts_dir)
+        self.node.putfile('scripts/setup_c.sh', scripts_dir)
+        self.node.exec(f'cd {scripts_dir} && mv setup_c.sh setup.sh')
         self.node.exec(f'chmod +x {scripts_dir}/*')
         self.node.write(textwrap.dedent("""
         1、本安装包自带了所有依赖（包括 glibc），并且为所有 ELF 文件设置了 RPATH 
            自动查找自带的依赖，所以无需配置 LD_LIBRARY_PATH 即可使用。
-        2、打包时已把所有 bin 目录下的程序的 interpreter 设置为指向 lib/copied
+        2、打包时已把所有 bin 目录下的程序的 interpreter 设置为指向 lib/sys
            目录中 interpreter 的相对路径，所以一开始只能在解压后的目录下执行程序才
            可成功（如 ./bin/myprog），解压完成后请执行 scripts/setup.sh 脚本
            进行初始配置，配置完成后会把 interpreter 修改为绝对路径，如果安装路径

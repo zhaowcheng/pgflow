@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Setup for postgres.
+# Setup for C/C++ program.
 
 set -e
 
@@ -8,7 +8,7 @@ BINDIR=$INSTDIR/bin
 PATCHELFDIR=$(dirname $(realpath $0))/patchelf
 cd $PATCHELFDIR
 INTERP_NAME=$(basename $(./bin/patchelf --print-interpreter $BINDIR/postgres))
-INTERP_PATH=$INSTDIR/lib/copied/$INTERP_NAME
+INTERP_PATH=$INSTDIR/lib/sys/$INTERP_NAME
 
 for bin in $(find $BINDIR -type f -exec file {} + | grep ELF | cut -d: -f1); do
     if [[ $(./bin/patchelf --print-interpreter $bin) != $INTERP_PATH ]]; then
