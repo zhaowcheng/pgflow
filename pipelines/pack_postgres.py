@@ -11,12 +11,12 @@ class pack_postgres(pack_c):
     """
     postgres 打包流程。
     """
-    PROGNAME = 'postgres'    
-
     class Options(pack_c.Options):
         """
         流水线参数表。
         """
+        progname: str = Pipeline.Option(desc='Program name.',
+                                        default='postgres')
         nix_env_name: str = Pipeline.Option(desc='Nix shell environment name.',
                                             default='postgres')
         
@@ -56,11 +56,17 @@ class pack_postgres(pack_c):
         self.options: __class__.Options  # 保留用于自动提示
         super().setup()
 
+        # 参数准备
+        self.instdir = self.node.cwd.joinpath('install')
+        self.configure_options = (self.options.configure_options or '') + f' --prefix={self.instdir}'
+
     def stage1(self) -> None:
         """
         拉取代码。
         """
-        super().stage1()
+        self.node.git(self.options.repo_url,
+                      self.options.revision,
+                      directory='code')
         
     def stage2(self) -> None:
         """
@@ -69,15 +75,15 @@ class pack_postgres(pack_c):
         with self.node.dir('code'):
             with self.nixenv():
                 self.node.exec(f'./configure {self.configure_options}')
-                self.node.exec('make -j`nproc` world')
+                self.node.exec('make world -j`nproc`')
                 self.node.exec('make install-world')
 
     def stage3(self) -> None:
         """
         打包。
         """
-        self.handle_deps()
-        self.archive()
+        self.handle_deps(self.instdir)
+        self.archive(self.instdir, self.pkgstem)
 
     def teardown(self) -> None:
         """
@@ -93,4 +99,3 @@ class pack_postgres(pack_c):
         with self.node.dir(self.instdir):
             with self.nixenv():
                 return self.node.exec(f'./bin/postgres --version').getfield('postgres', 3)
-    
