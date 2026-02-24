@@ -13,3 +13,6 @@ workdir/
 
 # env.yml
 env.yml
+
+# macos
+.DS_Store
