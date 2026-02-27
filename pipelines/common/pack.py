@@ -50,13 +50,16 @@ class pack(Pipeline):
         raise NotImplementedError
     
     @contextmanager
-    def nixenv(self) -> Generator[None, None, None]:
+    def nixenv(self, options: Optional[str] = None) -> Generator[None, None, None]:
         """
-        进入 nix_* 等参数指定的 nix shell 环境。
+        使用 nix develop 进入 nix_* 等参数指定的 nix shell 环境。
+
+        :param options: nix develop 命令选项。
         """
         with self.node.nixenv(self.options.nix_flakes_dir,
                               self.options.system,
-                              name=self.options.nix_env_name):
+                              name=self.options.nix_env_name,
+                              options=options):
             yield
 
     def archive(
@@ -206,7 +209,8 @@ class pack_pgext(pack_c):
             pkgname = self.options.pg_pkg_url.split('/')[-1]
             self.node.exec(f'wget {self.options.pg_pkg_url}')
             self.node.exec(f'tar xvf {pkgname} && rm {pkgname}')
-            self.node.exec('./scripts/setup.sh')
+            with self.nixenv():
+                self.node.exec('./scripts/setup.sh')
     
     def handle_deps(
         self,
