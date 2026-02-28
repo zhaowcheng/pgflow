@@ -5,16 +5,16 @@ from xflow.framework.pipeline import Pipeline
 from .common.pack import pack_pgext
 
 
-class pack_pgvector(pack_pgext):
+class pack_oracle_fdw(pack_pgext):
     """
-    pgvector 打包流程。
+    oracle_fdw 打包流程。
     """
     class Options(pack_pgext.Options):
         """
         流水线参数表。
         """
         progname: str = Pipeline.Option(desc='Program name.',
-                                        default='pgvector')
+                                        default='oracle_fdw')
         nix_env_name: str = Pipeline.Option(desc='Nix shell environment name.',
                                             default='postgres')
         
@@ -67,4 +67,4 @@ class pack_pgvector(pack_pgext):
         程序版本号。
         """
         with self.node.dir('code'):
-            return self.node.exec('cat vector.control').getfield('default_version', 2, sep='=').strip("'")
+            return self.node.exec('cat oracle_fdw.h | grep ORACLE_FDW_VERSION').split()[-1].strip('"')

@@ -44,7 +44,7 @@ class pack_pgroonga(pack_pgext):
         编译。
         """
         with self.node.dir('code'):
-            with self.nixenv(options=f'-s PATH {self.pgdir.joinpath("bin")}'):
+            with self.nixenv(options=f'-s PATH {self.pgdir}/bin'):
                 self.node.exec('make HAVE_MSGPACK=1')
                 self.node.exec(f'make install DESTDIR={self.destdir}')
 

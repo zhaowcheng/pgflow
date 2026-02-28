@@ -1,20 +1,21 @@
 from functools import cached_property
+from textwrap import dedent
 
 from xflow.framework.pipeline import Pipeline
 
 from .common.pack import pack_pgext
 
 
-class pack_pgvector(pack_pgext):
+class pack_mysql_fdw(pack_pgext):
     """
-    pgvector 打包流程。
+    mysql_fdw 打包流程。
     """
     class Options(pack_pgext.Options):
         """
         流水线参数表。
         """
         progname: str = Pipeline.Option(desc='Program name.',
-                                        default='pgvector')
+                                        default='mysql_fdw')
         nix_env_name: str = Pipeline.Option(desc='Nix shell environment name.',
                                             default='postgres')
         
@@ -45,13 +46,22 @@ class pack_pgvector(pack_pgext):
         """
         with self.node.dir('code'):
             with self.nixenv(options=f'-s PATH {self.pgdir}/bin'):
-                self.node.exec('make')
-                self.node.exec(f'make install DESTDIR={self.destdir}')
+                self.node.exec('make USE_PGXS=1')
+                self.node.exec(f'make install USE_PGXS=1 DESTDIR={self.destdir}')
 
     def stage3(self) -> None:
         """
         打包。
         """
+        self.node.exec(f'mkdir -p {self.instdir}/lib')
+        copy_libmysql_script = self.node.cwd.joinpath('copy_libmysql.sh')
+        self.node.write(dedent(f"""\
+        #!/bin/bash -e
+        cp $MYSQL_HOME/lib/mysql/libmysqlclient.so {self.instdir}/lib/
+        """), copy_libmysql_script)
+        self.node.exec(f'chmod +x {copy_libmysql_script}')
+        with self.nixenv():
+            self.node.exec(copy_libmysql_script)
         self.handle_deps(self.instdir, self.pgdir)
         self.archive(self.instdir, self.pkgstem)
 
@@ -67,4 +77,4 @@ class pack_pgvector(pack_pgext):
         程序版本号。
         """
         with self.node.dir('code'):
-            return self.node.exec('cat vector.control').getfield('default_version', 2, sep='=').strip("'")
+            return self.node.exec('cat mysql_fdw.c | grep "version is"').split()[4]
