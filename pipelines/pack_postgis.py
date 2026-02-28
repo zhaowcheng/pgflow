@@ -45,7 +45,7 @@ class pack_postgis(pack_pgext):
         编译。
         """
         with self.node.dir('code'):
-            with self.nixenv(options=f'-s PATH {self.pgdir}/bin'):
+            with self.nixenv(options=f'-s PATH {self.pgdir}/bin:$PATH'):
                 configure_options = self.options.configure_options or ''
                 if self.options.system in ['loongarch64-linux', 'mips64el-linux']:
                     configure_options += ' --without-raster'
