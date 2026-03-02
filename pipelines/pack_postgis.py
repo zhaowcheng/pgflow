@@ -15,8 +15,6 @@ class pack_postgis(pack_pgext):
         """
         progname: str = Pipeline.Option(desc='Program name.',
                                         default='postgis')
-        nix_env_name: str = Pipeline.Option(desc='Nix shell environment name.',
-                                            default='postgres')
         
         
     def setup(self) -> None:

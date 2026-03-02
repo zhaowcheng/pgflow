@@ -16,8 +16,6 @@ class pack_mysql_fdw(pack_pgext):
         """
         progname: str = Pipeline.Option(desc='Program name.',
                                         default='mysql_fdw')
-        nix_env_name: str = Pipeline.Option(desc='Nix shell environment name.',
-                                            default='postgres')
         
     def setup(self) -> None:
         """
@@ -45,7 +43,7 @@ class pack_mysql_fdw(pack_pgext):
         编译。
         """
         with self.node.dir('code'):
-            with self.nixenv(options=f'-s PATH {self.pgdir}/bin'):
+            with self.nixenv(options=f'-s PATH {self.pgdir}/bin:$PATH'):
                 self.node.exec('make USE_PGXS=1')
                 self.node.exec(f'make install USE_PGXS=1 DESTDIR={self.destdir}')
 

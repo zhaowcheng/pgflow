@@ -17,8 +17,6 @@ class pack_postgres(pack_c):
         """
         progname: str = Pipeline.Option(desc='Program name.',
                                         default='postgres')
-        nix_env_name: str = Pipeline.Option(desc='Nix shell environment name.',
-                                            default='postgres')
         
         @model_validator(mode='after')
         def default_configure_options(self) -> Self:

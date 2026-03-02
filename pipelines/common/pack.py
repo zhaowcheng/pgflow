@@ -172,14 +172,17 @@ class pack_c(pack):
            发生变更，需重新执行 scripts/setup.sh 脚本。
         """), f'{instdir.joinpath("README")}')
 
-class pack_pgext(pack_c):
+
+class pack_pgceco(pack_c):
     """
-    postgres 扩展打包基类。
+    编译时需要 postgres 包的 C/C++ 生态（扩展、工具）打包基类。
     """
     class Options(pack_c.Options):
         """
         流水线参数表。
         """
+        nix_env_name: str = Pipeline.Option(desc='Nix shell environment name.',
+                                            default='postgres')
         pg_pkg_url: str = Pipeline.Option(desc='The postgres package url.')
 
     def setup(self) -> None:
@@ -211,7 +214,31 @@ class pack_pgext(pack_c):
             self.node.exec(f'tar xvf {pkgname} && rm {pkgname}')
             with self.nixenv():
                 self.node.exec('./scripts/setup.sh')
-    
+
+
+class pack_pgext(pack_pgceco):
+    """
+    postgres 扩展打包基类。
+    """
+    class Options(pack_pgceco.Options):
+        """
+        流水线参数表。
+        """
+        pass
+
+    def setup(self) -> None:
+        """
+        前置步骤。
+        """
+        self.options: __class__.Options  # 保留用于自动提示
+        super().setup()
+
+    def teardown(self) -> None:
+        """
+        后置步骤。
+        """
+        super().teardown()
+
     def handle_deps(
         self,
         instdir: str | PurePosixPath,

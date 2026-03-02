@@ -1,21 +1,34 @@
 from functools import cached_property
+from typing_extensions import Self
 
 from xflow.framework.pipeline import Pipeline
+from .common.pack import pack_pgceco
 
-from .common.pack import pack_pgext
+from pydantic import model_validator
 
 
-class pack_pgroonga(pack_pgext):
+class pack_pgpool(pack_pgceco):
     """
-    pgroonga 打包流程。
+    pgpool 打包流程。
     """
-    class Options(pack_pgext.Options):
+    class Options(pack_pgceco.Options):
         """
         流水线参数表。
         """
         progname: str = Pipeline.Option(desc='Program name.',
-                                        default='pgroonga')
+                                        default='pgpool')
         
+        @model_validator(mode='after')
+        def default_configure_options(self) -> Self:
+            """
+            默认 configure 参数。
+            """
+            if not self.configure_options:
+                self.configure_options = '--with-openssl ' \
+                                         '--with-pam ' \
+                                         '--with-ldap '
+            return self
+
     def setup(self) -> None:
         """
         前置步骤。
@@ -24,9 +37,9 @@ class pack_pgroonga(pack_pgext):
         super().setup()
 
         # 参数准备
-        self.destdir = self.node.cwd.joinpath('destdir')
+        self.instdir = self.node.cwd.joinpath('install')
         self.pgdir = self.node.cwd.joinpath('postgres')
-        self.instdir = self.destdir.joinpath(self.pgdir.relative_to('/'))
+        self.configure_options = (self.options.configure_options or '') + f' --prefix={self.instdir}'
 
     def stage1(self) -> None:
         """
@@ -43,14 +56,16 @@ class pack_pgroonga(pack_pgext):
         """
         with self.node.dir('code'):
             with self.nixenv(options=f'-s PATH {self.pgdir}/bin:$PATH'):
-                self.node.exec('make HAVE_MSGPACK=1')
-                self.node.exec(f'make install DESTDIR={self.destdir}')
+                self.node.exec('autoreconf -fi')
+                self.node.exec(f'./configure {self.configure_options}')
+                self.node.exec('make -j`nproc`')
+                self.node.exec('make install')
 
     def stage3(self) -> None:
         """
         打包。
         """
-        self.handle_deps(self.instdir, self.pgdir)
+        self.handle_deps(self.instdir)
         self.archive(self.instdir, self.pkgstem)
 
     def teardown(self) -> None:
@@ -64,5 +79,6 @@ class pack_pgroonga(pack_pgext):
         """
         程序版本号。
         """
-        with self.node.dir('code'):
-            return self.node.exec('cat pgroonga.control').getfield('default_version', 2, sep='=').strip("'")
+        with self.node.dir(self.instdir):
+            with self.nixenv():
+                return self.node.exec(f'./bin/pgpool --version').getfield('pgpool', 3)
