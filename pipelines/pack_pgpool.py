@@ -15,6 +15,8 @@ class pack_pgpool(pack_pgceco):
         """
         流水线参数表。
         """
+        repourl: str = Pipeline.Option(desc='Repository URL.',
+                                       default='https://github.com/pgpool/pgpool2.git')
         progname: str = Pipeline.Option(desc='Program name.',
                                         default='pgpool')
         
@@ -37,25 +39,23 @@ class pack_pgpool(pack_pgceco):
         super().setup()
 
         # 参数准备
-        self.instdir = self.node.cwd.joinpath('install')
-        self.pgdir = self.node.cwd.joinpath('postgres')
         self.configure_options = (self.options.configure_options or '') + f' --prefix={self.instdir}'
 
     def stage1(self) -> None:
         """
         拉取代码。
         """
-        self.node.git(self.options.repo_url,
+        self.node.git(self.options.repourl,
                       self.options.revision,
-                      directory='code')
-        self.download_postgres(self.pgdir)
+                      directory=self.codedir)
+        self.install_postgres(self.pgdir)
         
     def stage2(self) -> None:
         """
         编译。
         """
-        with self.node.dir('code'):
-            with self.nixenv(options=f'-s PATH {self.pgdir}/bin:$PATH'):
+        with self.node.dir(self.codedir):
+            with self.nixenv():
                 self.node.exec('autoreconf -fi')
                 self.node.exec(f'./configure {self.configure_options}')
                 self.node.exec('make -j`nproc`')
@@ -65,8 +65,9 @@ class pack_pgpool(pack_pgceco):
         """
         打包。
         """
-        self.handle_deps(self.instdir)
-        self.archive(self.instdir, self.pkgstem)
+        self.copy_deps(self.instdir)
+        self.copy_instscript(self.packdir)
+        self.archive(self.packdir, self.pkgname)
 
     def teardown(self) -> None:
         """

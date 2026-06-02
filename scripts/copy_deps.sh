@@ -25,10 +25,18 @@ in_excludedirs() {
     return 1
 }
 
-for elf in `find $ELFDIR -type f -exec file {} + | grep ELF | cut -d: -f1`; do 
+case "$(uname -m)" in
+    x86_64)         ARCH="x86-64" ;;
+    aarch64)        ARCH="aarch64" ;;
+    loongarch64)    ARCH="LoongArch" ;;
+    mips64)         ARCH="MIPS" ;;
+    *)              echo "Unsupported architecture: $(uname -m)" >&2; exit 1 ;;
+esac
+
+for elf in `find $ELFDIR -type f -exec file {} + | grep ELF | grep -E "executable|shared object" | grep "$ARCH" | grep "dynamically" | grep -E "SYSV|GNU/Linux" | cut -d: -f1`; do 
     echo "Analysing $elf"
     ldd $elf
-    for sopath in `ldd $elf | grep -E '.+.so.* => /.+.so.* \(0x.+\)' | awk '{print $3}'`; do 
+    for sopath in `ldd $elf 2>&1 | grep -E '.+.so.* => /.+.so.* \(0x.+\)' | awk '{print $3}'`; do 
         sopaths+=($sopath)
     done
 done

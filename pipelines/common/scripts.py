@@ -30,6 +30,25 @@ def copy_deps(
     return node.exec_script('scripts/copy_deps.sh', argstr=argstr)
 
 
+def check_deps(
+    node: Node,
+    elfdir: str | PurePosixPath,
+    ldpaths: Optional[str] = None
+) -> CommandResult:
+    """
+    检查 `elfdir` 目录中的所有 elf 文件的依赖库是否都能找到。
+
+    :param node: 执行节点。
+    :param elfdir: elf 文件目录。
+    :param ldpaths: 添加到 LD_LIBRARY_PATH 环境变量的路径。
+    :return: 脚本输出。
+    """
+    envs = {'LD_LIBRARY_PATH': ldpaths} if ldpaths is not None else None
+    return node.exec_script('scripts/check_deps.sh',
+                            argstr=f'{elfdir}',
+                            envs=envs)
+
+
 def set_rpath(
     node: Node,
     elfdir: str | PurePosixPath,
@@ -62,3 +81,18 @@ def set_interp(
     """
     return node.exec_script('scripts/set_interp.sh',
                             argstr=f'{elfdir} {interp}')
+
+
+def wrap_locale(
+    node: Node,
+    elfdir: str | PurePosixPath
+) -> CommandResult:
+    """
+    把 `elfdir` 目录中的所有可执行程序替换为 shell 脚本并自动设置 LOCALE_ARCHIVE。
+
+    :param node: 执行节点。
+    :param elfdir: elf 文件目录。
+    :return: 脚本输出。
+    """
+    return node.exec_script('scripts/wrap_locale.sh',
+                            argstr=f'{elfdir}')

@@ -15,8 +15,12 @@ class pack_postgres(pack_c):
         """
         流水线参数表。
         """
+        repourl: str = Pipeline.Option(desc='Repository URL.',
+                                       default='https://github.com/postgres/postgres.git')
         progname: str = Pipeline.Option(desc='Program name.',
                                         default='postgres')
+        nix_env_name: str = Pipeline.Option(desc='Nix shell environment name.',
+                                            default='postgres')
         
         @model_validator(mode='after')
         def default_configure_options(self) -> Self:
@@ -54,23 +58,25 @@ class pack_postgres(pack_c):
         self.options: __class__.Options  # 保留用于自动提示
         super().setup()
 
-        # 参数准备
-        self.instdir = self.node.cwd.joinpath('install')
         self.configure_options = (self.options.configure_options or '') + f' --prefix={self.instdir}'
 
     def stage1(self) -> None:
         """
         拉取代码。
         """
-        self.node.git(self.options.repo_url,
+        options = ''
+        if self.options.revision:
+            options = f'--branch {self.options.revision} --depth 1'
+        self.node.git(self.options.repourl,
                       self.options.revision,
-                      directory='code')
+                      directory=self.codedir,
+                      options=options)
         
     def stage2(self) -> None:
         """
         编译。
         """
-        with self.node.dir('code'):
+        with self.node.dir(self.codedir):
             with self.nixenv():
                 self.node.exec(f'./configure {self.configure_options}')
                 self.node.exec('make world -j`nproc`')
@@ -80,8 +86,9 @@ class pack_postgres(pack_c):
         """
         打包。
         """
-        self.handle_deps(self.instdir)
-        self.archive(self.instdir, self.pkgstem)
+        self.copy_deps(self.instdir, copylocales=True)
+        self.copy_instscript(self.packdir)
+        self.archive(self.packdir, self.pkgname)
 
     def teardown(self) -> None:
         """
