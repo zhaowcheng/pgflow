@@ -16,3 +16,6 @@ env.yml
 
 # macos
 .DS_Store
+
+# Codex
+.codex/

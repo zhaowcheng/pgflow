@@ -83,16 +83,38 @@ def set_interp(
                             argstr=f'{elfdir} {interp}')
 
 
-def wrap_locale(
+def wrap_runtime(
     node: Node,
-    elfdir: str | PurePosixPath
+    elfdir: str | PurePosixPath,
+    locale_archive_savedir: str | PurePosixPath,
+    pythondir: Optional[str | PurePosixPath] = None
 ) -> CommandResult:
     """
-    把 `elfdir` 目录中的所有可执行程序替换为 shell 脚本并自动设置 LOCALE_ARCHIVE。
+    把 `elfdir` 目录中的可执行程序替换为 shell 脚本并自动设置运行时环境变量。
 
     :param node: 执行节点。
     :param elfdir: elf 文件目录。
+    :param locale_archive_savedir: locale-archive 相对 `elfdir` 的存放目录。
+    :param pythondir: 可选的 Python 标准库目录。
     :return: 脚本输出。
     """
-    return node.exec_script('scripts/wrap_locale.sh',
-                            argstr=f'{elfdir}')
+    argstr = f'{elfdir} {locale_archive_savedir}'
+    if pythondir is not None:
+        argstr += f' {pythondir}'
+    return node.exec_script('scripts/wrap_runtime.sh',
+                            argstr=argstr)
+
+
+def copy_python(
+    node: Node,
+    destdir: str | PurePosixPath
+) -> CommandResult:
+    """
+    把构建环境的 Python 标准库拷贝到 `destdir`。
+
+    :param node: 执行节点。
+    :param destdir: Python 标准库目标目录。
+    :return: 脚本输出。
+    """
+    return node.exec_script('scripts/copy_python.sh',
+                            argstr=f'{destdir}')

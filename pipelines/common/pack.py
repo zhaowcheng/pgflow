@@ -4,7 +4,7 @@ from functools import cached_property
 from pathlib import PurePosixPath
 
 from xflow.framework.pipeline import Pipeline
-from .scripts import copy_deps, check_deps, set_rpath, set_interp, wrap_locale
+from .scripts import copy_deps, check_deps, set_rpath, set_interp, wrap_runtime
 
 
 class pack(Pipeline):
@@ -199,11 +199,12 @@ class pack_c(pack):
                 self.node.exec(f'cp {interp_path} {destdir}')
                 set_interp(self.node, elfdir, f'./lib/copied/{interp_name}')
         if copylocales:
-            locales_savedir = elfdir.joinpath('etc')
+            locales_savedir = destdir
+            locales_savedir_rel = PurePosixPath('lib/copied')
             self.node.exec(f'mkdir -p {locales_savedir}')
             with self.nixenv():
                 self.node.exec(f"sh -c 'cp -v $LOCALE_ARCHIVE {locales_savedir}'")
-            wrap_locale(self.node, elfdir)
+            wrap_runtime(self.node, elfdir, locales_savedir_rel)
 
     def copy_patchelf(self, destdir: str | PurePosixPath) -> None:
         """

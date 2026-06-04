@@ -1,8 +1,10 @@
 from functools import cached_property
+from pathlib import PurePosixPath
 from typing_extensions import Self
 
 from xflow.framework.pipeline import Pipeline
 from .common.pack import pack_c
+from .common.scripts import copy_python, wrap_runtime
 
 from pydantic import model_validator
 
@@ -89,6 +91,36 @@ class pack_postgres(pack_c):
         self.copy_deps(self.instdir, copylocales=True)
         self.copy_instscript(self.packdir)
         self.archive(self.packdir, self.pkgname)
+
+    def copy_deps(
+        self,
+        elfdir: str | PurePosixPath,
+        excludedirs: str | None = None,
+        copyinterp: bool = True,
+        checkdeps: bool = True,
+        copylocales: bool = False
+    ) -> None:
+        """
+        拷贝依赖，并补充 PL/Python 运行时需要的 Python 标准库。
+        """
+        elfdir = PurePosixPath(elfdir)
+        pythondir = None
+        if elfdir == PurePosixPath(self.instdir) and '--with-python' in self.configure_options:
+            pythondir = elfdir.joinpath('lib/copied/python')
+            with self.nixenv():
+                copy_python(self.node, pythondir)
+
+        super().copy_deps(elfdir,
+                          excludedirs=excludedirs,
+                          copyinterp=copyinterp,
+                          checkdeps=checkdeps,
+                          copylocales=copylocales)
+
+        if pythondir is not None and copylocales:
+            wrap_runtime(self.node,
+                         elfdir,
+                         PurePosixPath('lib/copied'),
+                         pythondir=pythondir)
 
     def teardown(self) -> None:
         """
