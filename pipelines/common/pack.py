@@ -167,7 +167,9 @@ class pack_c(pack):
         excludedirs: Optional[str] = None,
         copyinterp: bool = True,
         checkdeps: bool = True,
-        copylocales: bool = False
+        copylocales: bool = False,
+        runtime_pythondir: Optional[str | PurePosixPath] = None,
+        runtime_perldir: Optional[str | PurePosixPath] = None
     ) -> None:
         """
         拷贝依赖。
@@ -177,6 +179,8 @@ class pack_c(pack):
         :param copyinterp: 是否拷贝动态库解释器。
         :param checkdeps: 拷贝完成后是否检查依赖。
         :param copylocales: 是否拷贝 locales 数据。
+        :param runtime_pythondir: 需要写入 wrapper 的 Python 标准库目录。
+        :param runtime_perldir: 需要写入 wrapper 的 Perl 库目录。
         """
         elfdir = PurePosixPath(elfdir)
         libdir = elfdir.joinpath('lib')
@@ -190,7 +194,8 @@ class pack_c(pack):
             copy_deps(self.node, elfdir, destdir, excludedirs=full_excludedirs)
             set_rpath(self.node, elfdir, f'{libdir}:{destdir}')
         if checkdeps:
-            check_deps(self.node, elfdir)
+            with self.nixenv():
+                check_deps(self.node, elfdir)
         if copyinterp:
             with self.nixenv():
                 bash_path = self.node.exec('which bash')
@@ -204,7 +209,11 @@ class pack_c(pack):
             self.node.exec(f'mkdir -p {locales_savedir}')
             with self.nixenv():
                 self.node.exec(f"sh -c 'cp -v $LOCALE_ARCHIVE {locales_savedir}'")
-            wrap_runtime(self.node, elfdir, locales_savedir_rel)
+                wrap_runtime(self.node,
+                             elfdir,
+                             locales_savedir_rel,
+                             pythondir=runtime_pythondir,
+                             perldir=runtime_perldir)
 
     def copy_patchelf(self, destdir: str | PurePosixPath) -> None:
         """
@@ -226,7 +235,7 @@ class pack_c(pack):
         self.node.exec(f'cp -v {patchelf} {bindir}')
         self.node.exec(f'cp -v {file} {bindir}')
         self.node.exec(f'cp -rv {filesharedir} {parent}')
-        self.copy_deps(parent)
+        pack_c.copy_deps(self, parent)
 
     def copy_instscript(
         self,

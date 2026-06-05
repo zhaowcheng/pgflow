@@ -4,14 +4,15 @@
 set -e
 
 progname=$(basename "$0")
-if [[ $# -lt 2 || $# -gt 3 ]]; then
-    echo "Usage: $progname ELFDIR LOCALE_ARCHIVE_SAVEDIR [PYTHONDIR]" >&2
+if [[ $# -lt 2 || $# -gt 4 ]]; then
+    echo "Usage: $progname ELFDIR LOCALE_ARCHIVE_SAVEDIR [PYTHONDIR] [PERLDIR]" >&2
     exit 1
 fi
 
 elfdir=$1
 locale_archive_savedir=$2
 pythondir=${3:-}
+perldir=${4:-}
 
 if [ ! -d "$elfdir" ]; then
     echo "error: not a directory: $elfdir" >&2
@@ -33,6 +34,11 @@ if [[ -n $pythondir && ! -d $pythondir ]]; then
     exit 1
 fi
 
+if [[ -n $perldir && ! -d $perldir ]]; then
+    echo "error: not a directory: $perldir" >&2
+    exit 1
+fi
+
 case "$(uname -m)" in
     x86_64)         ARCH="x86-64" ;;
     aarch64)        ARCH="aarch64" ;;
@@ -48,6 +54,15 @@ python_env() {
 PYTHONDIR=\$(CDPATH= cd -- "\$ELFDIR/$rel_python" && pwd)
 export PYTHONHOME="\$PYTHONDIR"
 export PYTHONPATH="\$PYTHONDIR:\$PYTHONDIR/lib-dynload\${PYTHONPATH:+:\$PYTHONPATH}"
+EOF
+}
+
+perl_env() {
+    local rel_perl=$1
+
+    cat <<EOF
+PERLDIR=\$(CDPATH= cd -- "\$ELFDIR/$rel_perl" && pwd)
+export PERL5LIB="\$PERLDIR\${PERL5LIB:+:\$PERL5LIB}"
 EOF
 }
 
@@ -83,6 +98,11 @@ if [[ -n $pythondir ]]; then
     rel_python=$(realpath --relative-to="$elfdir" "$pythondir")
 fi
 
+rel_perl=
+if [[ -n $perldir ]]; then
+    rel_perl=$(realpath --relative-to="$elfdir" "$perldir")
+fi
+
 for exe in $(find "$elfdir" -type f -not -name ".*" -exec file {} + | grep ELF | grep -E "executable" | grep "$ARCH" | grep "dynamically" | grep -E "SYSV|GNU/Linux" | cut -d: -f1); do
     dir=$(dirname "$exe")
     base=$(basename "$exe")
@@ -113,6 +133,7 @@ for exe in $(find "$elfdir" -type f -not -name ".*" -exec file {} + | grep ELF |
 SELFDIR=\$(dirname "\$0")
 ELFDIR=\$(CDPATH= cd -- "\$SELFDIR/$up" && pwd)
 export LOCALE_ARCHIVE="\$ELFDIR/$locale_archive_savedir/locale-archive"
+$(if [[ -n $rel_perl ]]; then perl_env "$rel_perl"; fi)
 $(if [[ -n $rel_python ]]; then python_env "$rel_python"; fi)
 exec "\$SELFDIR/.$base" "\$@"
 EOF
