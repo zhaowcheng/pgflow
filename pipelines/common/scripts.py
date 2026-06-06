@@ -88,7 +88,8 @@ def wrap_runtime(
     elfdir: str | PurePosixPath,
     locale_archive_savedir: str | PurePosixPath,
     pythondir: Optional[str | PurePosixPath] = None,
-    perldir: Optional[str | PurePosixPath] = None
+    perldir: Optional[str | PurePosixPath] = None,
+    tcldir: Optional[str | PurePosixPath] = None
 ) -> CommandResult:
     """
     把 `elfdir` 目录中的可执行程序替换为 shell 脚本并自动设置运行时环境变量。
@@ -98,15 +99,20 @@ def wrap_runtime(
     :param locale_archive_savedir: locale-archive 相对 `elfdir` 的存放目录。
     :param pythondir: 可选的 Python 标准库目录。
     :param perldir: 可选的 Perl 库目录。
+    :param tcldir: 可选的 Tcl 库目录。
     :return: 脚本输出。
     """
     argstr = f'{elfdir} {locale_archive_savedir}'
     if pythondir is not None:
         argstr += f' {pythondir}'
-    elif perldir is not None:
+    elif perldir is not None or tcldir is not None:
         argstr += ' ""'
     if perldir is not None:
         argstr += f' {perldir}'
+    elif tcldir is not None:
+        argstr += ' ""'
+    if tcldir is not None:
+        argstr += f' {tcldir}'
     return node.exec_script('scripts/wrap_runtime.sh',
                             argstr=argstr)
 
@@ -138,4 +144,19 @@ def copy_perl(
     :return: 脚本输出。
     """
     return node.exec_script('scripts/copy_perl.sh',
+                            argstr=f'{destdir}')
+
+
+def copy_tcl(
+    node: Node,
+    destdir: str | PurePosixPath
+) -> CommandResult:
+    """
+    把构建环境的 Tcl 库目录拷贝到 `destdir`。
+
+    :param node: 执行节点。
+    :param destdir: Tcl 库目标目录。
+    :return: 脚本输出。
+    """
+    return node.exec_script('scripts/copy_tcl.sh',
                             argstr=f'{destdir}')

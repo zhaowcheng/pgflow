@@ -169,7 +169,8 @@ class pack_c(pack):
         checkdeps: bool = True,
         copylocales: bool = False,
         runtime_pythondir: Optional[str | PurePosixPath] = None,
-        runtime_perldir: Optional[str | PurePosixPath] = None
+        runtime_perldir: Optional[str | PurePosixPath] = None,
+        runtime_tcldir: Optional[str | PurePosixPath] = None
     ) -> None:
         """
         拷贝依赖。
@@ -181,6 +182,7 @@ class pack_c(pack):
         :param copylocales: 是否拷贝 locales 数据。
         :param runtime_pythondir: 需要写入 wrapper 的 Python 标准库目录。
         :param runtime_perldir: 需要写入 wrapper 的 Perl 库目录。
+        :param runtime_tcldir: 需要写入 wrapper 的 Tcl 库目录。
         """
         elfdir = PurePosixPath(elfdir)
         libdir = elfdir.joinpath('lib')
@@ -213,7 +215,8 @@ class pack_c(pack):
                              elfdir,
                              locales_savedir_rel,
                              pythondir=runtime_pythondir,
-                             perldir=runtime_perldir)
+                             perldir=runtime_perldir,
+                             tcldir=runtime_tcldir)
 
     def copy_patchelf(self, destdir: str | PurePosixPath) -> None:
         """

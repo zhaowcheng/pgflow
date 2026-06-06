@@ -4,8 +4,8 @@
 set -e
 
 progname=$(basename "$0")
-if [[ $# -lt 2 || $# -gt 4 ]]; then
-    echo "Usage: $progname ELFDIR LOCALE_ARCHIVE_SAVEDIR [PYTHONDIR] [PERLDIR]" >&2
+if [[ $# -lt 2 || $# -gt 5 ]]; then
+    echo "Usage: $progname ELFDIR LOCALE_ARCHIVE_SAVEDIR [PYTHONDIR] [PERLDIR] [TCLDIR]" >&2
     exit 1
 fi
 
@@ -13,6 +13,7 @@ elfdir=$1
 locale_archive_savedir=$2
 pythondir=${3:-}
 perldir=${4:-}
+tcldir=${5:-}
 
 if [ ! -d "$elfdir" ]; then
     echo "error: not a directory: $elfdir" >&2
@@ -36,6 +37,11 @@ fi
 
 if [[ -n $perldir && ! -d $perldir ]]; then
     echo "error: not a directory: $perldir" >&2
+    exit 1
+fi
+
+if [[ -n $tcldir && ! -d $tcldir ]]; then
+    echo "error: not a directory: $tcldir" >&2
     exit 1
 fi
 
@@ -63,6 +69,15 @@ perl_env() {
     cat <<EOF
 PERLDIR=\$(CDPATH= cd -- "\$ELFDIR/$rel_perl" && pwd)
 export PERL5LIB="\$PERLDIR\${PERL5LIB:+:\$PERL5LIB}"
+EOF
+}
+
+tcl_env() {
+    local rel_tcl=$1
+
+    cat <<EOF
+TCLDIR=\$(CDPATH= cd -- "\$ELFDIR/$rel_tcl" && pwd)
+export TCL_LIBRARY="\$TCLDIR"
 EOF
 }
 
@@ -103,6 +118,11 @@ if [[ -n $perldir ]]; then
     rel_perl=$(realpath --relative-to="$elfdir" "$perldir")
 fi
 
+rel_tcl=
+if [[ -n $tcldir ]]; then
+    rel_tcl=$(realpath --relative-to="$elfdir" "$tcldir")
+fi
+
 for exe in $(find "$elfdir" -type f -not -name ".*" -exec file {} + | grep ELF | grep -E "executable" | grep "$ARCH" | grep "dynamically" | grep -E "SYSV|GNU/Linux" | cut -d: -f1); do
     dir=$(dirname "$exe")
     base=$(basename "$exe")
@@ -134,6 +154,7 @@ SELFDIR=\$(dirname "\$0")
 ELFDIR=\$(CDPATH= cd -- "\$SELFDIR/$up" && pwd)
 export LOCALE_ARCHIVE="\$ELFDIR/$locale_archive_savedir/locale-archive"
 $(if [[ -n $rel_perl ]]; then perl_env "$rel_perl"; fi)
+$(if [[ -n $rel_tcl ]]; then tcl_env "$rel_tcl"; fi)
 $(if [[ -n $rel_python ]]; then python_env "$rel_python"; fi)
 exec "\$SELFDIR/.$base" "\$@"
 EOF

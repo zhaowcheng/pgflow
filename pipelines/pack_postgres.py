@@ -4,7 +4,7 @@ from typing_extensions import Self
 
 from xflow.framework.pipeline import Pipeline
 from .common.pack import pack_c
-from .common.scripts import copy_perl, copy_python
+from .common.scripts import copy_perl, copy_python, copy_tcl
 
 from pydantic import model_validator
 
@@ -99,6 +99,7 @@ class pack_postgres(pack_c):
         elfdir = PurePosixPath(self.instdir)
         pythondir = None
         perldir = None
+        tcldir = None
         with self.nixenv():
             if '--with-perl' in self.configure_options:
                 perldir = elfdir.joinpath('lib/copied/perl')
@@ -106,11 +107,15 @@ class pack_postgres(pack_c):
             if '--with-python' in self.configure_options:
                 pythondir = elfdir.joinpath('lib/copied/python')
                 copy_python(self.node, pythondir)
+            if '--with-tcl' in self.configure_options:
+                tcldir = elfdir.joinpath('lib/copied/tcl')
+                copy_tcl(self.node, tcldir)
 
         super().copy_deps(elfdir,
                           copylocales=True,
                           runtime_pythondir=pythondir,
-                          runtime_perldir=perldir)
+                          runtime_perldir=perldir,
+                          runtime_tcldir=tcldir)
 
     def teardown(self) -> None:
         """
