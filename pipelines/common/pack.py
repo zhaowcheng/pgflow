@@ -4,7 +4,7 @@ from functools import cached_property
 from pathlib import PurePosixPath
 
 from xflow.framework.pipeline import Pipeline
-from .scripts import copy_deps, check_deps, set_rpath, set_interp, wrap_runtime
+from .scripts import copy_deps, check_deps, copy_runtime_tools, set_rpath, set_interp
 
 
 class pack(Pipeline):
@@ -132,6 +132,8 @@ class pack_c(pack):
         """
         configure_options: Optional[str] = Pipeline.Option(desc='Configure options.',
                                                            default='')
+        include_tests: bool = Pipeline.Option(desc='Include package test files and test runtime tools.',
+                                              default=False)
 
     def setup(self) -> None:
         """
@@ -139,6 +141,9 @@ class pack_c(pack):
         """
         self.options: __class__.Options  # 保留用于自动提示
         super().setup()
+
+        # 变量定义
+        self.testsdir = self.instdir.joinpath('tests')
 
     def teardown(self) -> None:
         """
@@ -161,16 +166,77 @@ class pack_c(pack):
         """
         return f'{super().pkgstem}-glibc{self.glibc_version}'
 
+    @property
+    def default_test_tools(self) -> tuple[str, ...]:
+        """
+        常见测试脚本需要的基础工具。
+        """
+        return (
+            'awk',
+            'bash',
+            'cat',
+            'chmod',
+            'cmp',
+            'cp',
+            'cut',
+            'date',
+            'diff',
+            'dirname',
+            'env',
+            'expr',
+            'find',
+            'grep',
+            'head',
+            'id',
+            'ln',
+            'ls',
+            'make',
+            'mkdir',
+            'mv',
+            'realpath',
+            'rm',
+            'rmdir',
+            'sed',
+            'sh',
+            'sleep',
+            'sort',
+            'tail',
+            'tar',
+            'tee',
+            'touch',
+            'tr',
+            'uname',
+            'xargs',
+        )
+
+    def copy_test_tools(
+        self,
+        tools: Optional[tuple[str, ...]] = None
+    ) -> None:
+        """
+        复制包内测试调用所需的命令行工具。
+
+        :param tools: 附加工具列表。
+        """
+        test_tools_dir = self.testsdir.joinpath('tools')
+        tool_names = tuple(dict.fromkeys([*self.default_test_tools, *(tools or ())]))
+        self.node.exec(f'mkdir -p {test_tools_dir}')
+        with self.nixenv():
+            copy_runtime_tools(self.node, test_tools_dir, tool_names)
+
+    def copy_tests(self) -> None:
+        """
+        复制测试内容。具体包按需覆盖。
+        """
+        raise NotImplementedError
+
     def copy_deps(
         self,
         elfdir: str | PurePosixPath,
         excludedirs: Optional[str] = None,
         copyinterp: bool = True,
         checkdeps: bool = True,
-        copylocales: bool = False,
-        runtime_pythondir: Optional[str | PurePosixPath] = None,
-        runtime_perldir: Optional[str | PurePosixPath] = None,
-        runtime_tcldir: Optional[str | PurePosixPath] = None
+        copylocales: bool = False
     ) -> None:
         """
         拷贝依赖。
@@ -180,9 +246,6 @@ class pack_c(pack):
         :param copyinterp: 是否拷贝动态库解释器。
         :param checkdeps: 拷贝完成后是否检查依赖。
         :param copylocales: 是否拷贝 locales 数据。
-        :param runtime_pythondir: 需要写入 wrapper 的 Python 标准库目录。
-        :param runtime_perldir: 需要写入 wrapper 的 Perl 库目录。
-        :param runtime_tcldir: 需要写入 wrapper 的 Tcl 库目录。
         """
         elfdir = PurePosixPath(elfdir)
         libdir = elfdir.joinpath('lib')
@@ -207,16 +270,9 @@ class pack_c(pack):
                 set_interp(self.node, elfdir, f'./lib/copied/{interp_name}')
         if copylocales:
             locales_savedir = destdir
-            locales_savedir_rel = PurePosixPath('lib/copied')
             self.node.exec(f'mkdir -p {locales_savedir}')
             with self.nixenv():
                 self.node.exec(f"sh -c 'cp -v $LOCALE_ARCHIVE {locales_savedir}'")
-                wrap_runtime(self.node,
-                             elfdir,
-                             locales_savedir_rel,
-                             pythondir=runtime_pythondir,
-                             perldir=runtime_perldir,
-                             tcldir=runtime_tcldir)
 
     def copy_patchelf(self, destdir: str | PurePosixPath) -> None:
         """

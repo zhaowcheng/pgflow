@@ -37,6 +37,13 @@ for path in $(perl -e 'print join("\n", @INC, "")'); do
     fi
 done
 
+for path in $(perl -e 'print join("\n", @INC, "")'); do
+    if [[ -d $path && $path != "$destdir" ]] && find "$path" -mindepth 1 -maxdepth 1 | grep -q .; then
+        mkdir -p "$destdir"
+        cp -rv "$path"/* "$destdir"/
+    fi
+done
+
 find "$destdir" -name "*.pod" -exec rm -fv {} +
 
 if [[ $copy_config != 1 ]]; then

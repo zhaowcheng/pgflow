@@ -2,6 +2,7 @@
 公共脚本。
 """
 
+from shlex import quote
 from typing import Optional
 from pathlib import PurePosixPath
 
@@ -83,37 +84,32 @@ def set_interp(
                             argstr=f'{elfdir} {interp}')
 
 
-def wrap_runtime(
+def _join_colon(items: list[str] | tuple[str, ...]) -> str:
+    """
+    使用冒号连接参数，并转义条目内部的冒号。
+    """
+    return ':'.join(item.replace('\\', '\\\\').replace(':', '\\:')
+                    for item in items)
+
+
+def wrap_envs(
     node: Node,
-    elfdir: str | PurePosixPath,
-    locale_archive_savedir: str | PurePosixPath,
-    pythondir: Optional[str | PurePosixPath] = None,
-    perldir: Optional[str | PurePosixPath] = None,
-    tcldir: Optional[str | PurePosixPath] = None
+    topdir: str | PurePosixPath,
+    bins: list[str] | tuple[str, ...],
+    envs: list[str] | tuple[str, ...]
 ) -> CommandResult:
     """
-    把 `elfdir` 目录中的可执行程序替换为 shell 脚本并自动设置运行时环境变量。
+    把 `topdir` 下指定的可执行程序替换为 shell 脚本并自动设置环境变量。
 
     :param node: 执行节点。
-    :param elfdir: elf 文件目录。
-    :param locale_archive_savedir: locale-archive 相对 `elfdir` 的存放目录。
-    :param pythondir: 可选的 Python 标准库目录。
-    :param perldir: 可选的 Perl 库目录。
-    :param tcldir: 可选的 Tcl 库目录。
+    :param topdir: 目标目录。
+    :param bins: 需要 wrap 的程序，相对 `topdir`。
+    :param envs: 写入 wrapper 的环境变量，格式为 NAME=VALUE。
     :return: 脚本输出。
     """
-    argstr = f'{elfdir} {locale_archive_savedir}'
-    if pythondir is not None:
-        argstr += f' {pythondir}'
-    elif perldir is not None or tcldir is not None:
-        argstr += ' ""'
-    if perldir is not None:
-        argstr += f' {perldir}'
-    elif tcldir is not None:
-        argstr += ' ""'
-    if tcldir is not None:
-        argstr += f' {tcldir}'
-    return node.exec_script('scripts/wrap_runtime.sh',
+    argstr = ' '.join(quote(item)
+                      for item in (str(topdir), _join_colon(bins), _join_colon(envs)))
+    return node.exec_script('scripts/wrap_envs.sh',
                             argstr=argstr)
 
 
@@ -160,3 +156,20 @@ def copy_tcl(
     """
     return node.exec_script('scripts/copy_tcl.sh',
                             argstr=f'{destdir}')
+
+
+def copy_runtime_tools(
+    node: Node,
+    destdir: str | PurePosixPath,
+    tools: list[str] | tuple[str, ...]
+) -> CommandResult:
+    """
+    把构建环境 PATH 中的工具复制到 `destdir/bin`。
+
+    :param node: 执行节点。
+    :param destdir: 工具目录。
+    :param tools: 工具名列表。
+    :return: 脚本输出。
+    """
+    return node.exec_script('scripts/copy_runtime_tools.sh',
+                            argstr=' '.join([str(destdir), *tools]))

@@ -37,7 +37,7 @@ copy_content() {
 
     cntdir=$(common_topdir)/content
     mkdir -p "$instdir"
-    cp -rv "$cntdir"/* "$instdir"
+    cp -av "$cntdir"/. "$instdir"
     chmod -R +w "$instdir"/*
 }
 

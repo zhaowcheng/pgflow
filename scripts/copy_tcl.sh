@@ -32,3 +32,20 @@ fi
 
 mkdir -p "$destdir"
 cp -rv "$tcllib"/* "$destdir"/
+
+tclparent=$(dirname "$tcllib")
+if [[ -d $tclparent/tcl8 ]]; then
+    cp -rv "$tclparent/tcl8" "$(dirname "$destdir")"/
+fi
+
+while IFS= read -r path; do
+    if [[ ! -d $path ]]; then
+        continue
+    fi
+    if [[ -d $path/tcl8 ]]; then
+        cp -rv "$path/tcl8" "$destdir"/
+    fi
+    while IFS= read -r pkgdir; do
+        cp -rv "$pkgdir" "$destdir"/
+    done < <(find "$path" -mindepth 1 -maxdepth 1 -type d -name "*[0-9]*" -exec test -f "{}/pkgIndex.tcl" \; -print)
+done < <(printf 'puts [join $auto_path "\n"]\n' | "$tclsh")

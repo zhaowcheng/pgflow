@@ -29,8 +29,6 @@ venv/bin/xflow -p . --help
 
 运行具体流水线时使用 `xflow -p . run <pipeline>`，并按对应 `Options` 补齐参数，例如 `repo_url`、`revision`、`system`、`nix_flakes_dir`、`pg_pkg_url` 等。实际构建依赖 `env.yml` 中可访问的节点、远端 Nix flakes 目录和目标架构 shell。
 
-执行实际流水线脚本时，不要把完整构建日志带入对话上下文，避免无意义消耗 token。实际构建应把完整输出重定向到本地日志文件，例如 `workdir/<pipeline>/logs/<pkg>-<version>-<system>.log`；对话中只读取 `tail` 的末尾片段，或用 `rg`/`grep` 提取 `error`、`failed`、退出命令、包名和阶段结论。
-
 注意：当前 `xflow -p . run --help` 会尝试导入所有流水线；如果 `pipelines/pack_patroni.py` 中类名仍不是 `pack_patroni`，该帮助命令会因模块类名不匹配失败。
 
 ## 代码风格与命名约定
