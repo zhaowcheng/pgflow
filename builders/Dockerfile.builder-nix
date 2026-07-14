@@ -43,7 +43,7 @@ COPY keys/nix-serve/public.key nixcache_pub.key
 RUN echo "substituters = http://pgflow-nixcache https://cache.nix4loong.cn https://mirror.sjtu.edu.cn/nix-channels/store https://cache.nixos.org https://nix-community.cachix.org" >> /etc/nix/nix.custom.conf
 RUN echo "trusted-public-keys = $(cat nixcache_pub.key) cache.nix4loong.cn-1:zmkwLihdSUyy6OFSVgvK3br0EaUEczLiJgDfvOmm3pA= cache.nixos.org-1:6NCHdD59X431o0gWypbMrAURkbJ16ZPMQFGspcDShjY=" >> /etc/nix/nix.custom.conf
 # 增加额外支持的平台。
-RUN echo "extra-platforms = aarch64-linux loongarch64-linux mips64el-linux" >> /etc/nix/nix.custom.conf
+RUN echo "extra-platforms = aarch64-linux loongarch64-linux" >> /etc/nix/nix.custom.conf
 # 增加 loongarch64 支持。
 RUN echo "extra-system-features = gccarch-la64v1.0 gccarch-loongarch64" >> /etc/nix/nix.custom.conf
 # 设置 tarball 缓存有效期为 100 年，对于 nixpkgs 和 flake-registry 均有效。
@@ -71,12 +71,6 @@ RUN nix develop /root/flakes/#devShells.loongarch64-linux.python -c uname -m
 RUN nix develop /root/flakes/#devShells.loongarch64-linux.go -c uname -m
 RUN nix develop /root/flakes/#devShells.loongarch64-linux.java -c uname -m
 RUN nix develop /root/flakes/#devShells.loongarch64-linux.base -c uname -m
-RUN nix develop /root/flakes/#devShells.mips64el-linux.postgres -c uname -m
-RUN nix develop /root/flakes/#devShells.mips64el-linux.cpython -c uname -m
-RUN nix develop /root/flakes/#devShells.mips64el-linux.python -c uname -m
-RUN nix develop /root/flakes/#devShells.mips64el-linux.go -c uname -m
-RUN nix develop /root/flakes/#devShells.mips64el-linux.java -c uname -m
-RUN nix develop /root/flakes/#devShells.mips64el-linux.base -c uname -m
 
 WORKDIR /root
 

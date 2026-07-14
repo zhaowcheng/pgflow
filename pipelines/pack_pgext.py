@@ -83,7 +83,7 @@ class pack_pgext(pack_pgceco):
                 # configure
                 if self.options.progname == 'postgis':
                     configure_options = self.options.configure_options or ''
-                    if self.options.system in ['loongarch64-linux', 'mips64el-linux']:
+                    if self.options.system in ['loongarch64-linux']:
                         configure_options += ' --without-raster'
                     self.node.exec('./autogen.sh')
                     self.node.exec(f'./configure {configure_options}')

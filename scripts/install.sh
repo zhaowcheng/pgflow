@@ -46,7 +46,6 @@ detect_arch() {
         x86_64)         echo "x86-64" ;;
         aarch64)        echo "aarch64" ;;
         loongarch64)    echo "LoongArch" ;;
-        mips64)         echo "MIPS" ;;
         *)              die "Unsupported architecture: $(uname -m)" ;;
     esac
 }

@@ -20,8 +20,7 @@ class pack(Pipeline):
         system: str = Pipeline.Option(desc='The target system to build.',
                                       choices=('x86_64-linux',
                                                'aarch64-linux',
-                                               'loongarch64-linux',
-                                               'mips64el-linux'))
+                                               'loongarch64-linux'))
         progname: str = Pipeline.Option(desc='Program name.')
         nix_flakes_dir: str = Pipeline.Option(desc='Nix flakes directory.',
                                               default='~/flakes')

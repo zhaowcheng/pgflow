@@ -70,11 +70,10 @@ rg -n 'nixpkgs/archive|nix registry add|nixpkgs-nix\.url' .
 
 ## 多架构维护要求
 
-当前 Linux flake 覆盖 `x86_64-linux`、`aarch64-linux`、`loongarch64-linux`、`mips64el-linux`。修改公共环境时必须逐一判断四个平台是否可求值，不能依据 x86_64 成功就默认其他架构可用。
+当前 Linux flake 覆盖 `x86_64-linux`、`aarch64-linux`、`loongarch64-linux`。修改公共环境时必须逐一判断四个平台是否可求值，不能依据 x86_64 成功就默认其他架构可用。
 
 - x86_64 和 aarch64 通常使用主 `nixpkgs-nix` 输入。
 - loongarch64 使用专用 nixpkgs 输入及 `loongarch64-linux.nix` overlay。
-- mips64el 使用 `mips64el-linux-gnuabi64` system 映射及专用 overlay。
 - Oracle Client、LLVM、systemd、Node.js 等已有平台限制应继续通过条件依赖表达。
 - QEMU 下跳过或标记预期失败的测试必须限定到对应 overlay，并保留具体失败原因；不要把规避项提升为所有平台的默认行为。
 
@@ -103,6 +102,6 @@ rg -n 'nixpkgs/archive|nix registry add|nixpkgs-nix\.url' .
 
 ## 提交与变更说明
 
-提交标题使用简短中文祈使句，例如 `更新 Nix 编译环境依赖`、`修复 mips64el overlay 构建`。不要把镜像导出文件、缓存、密钥或无关格式化混入功能变更。
+提交标题使用简短中文祈使句，例如 `更新 Nix 编译环境依赖`、`修复 loongarch64 overlay 构建`。不要把镜像导出文件、缓存、密钥或无关格式化混入功能变更。
 
 PR 或变更说明至少包含：受影响的 Dockerfile、flake/dev shell、目标架构、nixpkgs revision 或关键版本、实际执行的验证、生成的镜像名，以及未验证的平台或 Windows 隔离模式。若使用者命令或名称发生变化，同时更新 `README.md`。

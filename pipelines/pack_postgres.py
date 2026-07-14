@@ -48,11 +48,10 @@ class pack_postgres(pack_c):
                                          '--with-liburing ' \
                                          '--with-libxml ' \
                                          '--with-libxslt ' \
-                                         '--with-selinux '
-                if self.system not in ['mips64el-linux']:
-                    self.configure_options += '--with-systemd ' \
-                                              '--with-libcurl '
-                if self.system not in ['loongarch64-linux', 'mips64el-linux']:
+                                         '--with-selinux ' \
+                                         '--with-systemd ' \
+                                         '--with-libcurl '
+                if self.system not in ['loongarch64-linux']:
                     self.configure_options += '--with-llvm '
             return self
 

@@ -13,7 +13,6 @@ case "$(uname -m)" in
     x86_64)         ARCH="x86-64" ;;
     aarch64)        ARCH="aarch64" ;;
     loongarch64)    ARCH="LoongArch" ;;
-    mips64)         ARCH="MIPS" ;;
     *)              echo "Unsupported architecture: $(uname -m)" >&2; exit 1 ;;
 esac
 
