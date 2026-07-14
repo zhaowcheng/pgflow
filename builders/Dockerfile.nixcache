@@ -1,0 +1,57 @@
+FROM m.daocloud.io/docker.io/library/debian:bookworm
+
+# 设置 nix 命令路径，由于 docker build 是用 bash -c 的方式执行命令会找不到这些命令。
+ENV PATH=/nix/var/nix/profiles/default/bin:$PATH
+
+# 后续步骤默认 shell 为 bash。
+SHELL ["/bin/bash", "-c"]
+
+# 更换为国内镜像源
+RUN cd /etc/apt/sources.list.d/ && \
+    echo "Types: deb" > debian.sources && \
+    echo "URIs: http://mirrors.aliyun.com/debian" >> debian.sources && \
+    echo "Suites: bookworm bookworm-updates" >> debian.sources && \
+    echo "Components: main" >> debian.sources && \
+    echo "Signed-By: /usr/share/keyrings/debian-archive-keyring.gpg" >> debian.sources
+
+# 安装常用包
+# apt update 必须和 apt install 放在同一层，避免 Docker cache 复用旧索引后下载已下架的软件包导致 404。
+RUN apt update && apt install -y sudo wget vim ssh curl locales
+
+# 配置 locale
+RUN sed -i 's/^# *en_US.UTF-8 UTF-8/en_US.UTF-8 UTF-8/' /etc/locale.gen
+RUN locale-gen
+RUN update-locale LANG=en_US.UTF-8
+RUN echo 'export LANG=en_US.UTF-8' >> /etc/profile
+RUN echo 'export LANG=en_US.UTF-8' >> /etc/bash.bashrc
+
+# 配置 vim 默认编码
+RUN echo "set encoding=utf-8" >> /etc/vim/vimrc
+RUN echo "set fileencoding=utf-8" >> /etc/vim/vimrc
+RUN echo "set fileencodings=utf-8,latin1" >> /etc/vim/vimrc
+
+# 下载并安装 nix 2.28.3。
+RUN wget https://ghfast.top/https://github.com/DeterminateSystems/nix-installer/releases/download/v3.5.2/nix-installer-x86_64-linux -O nix-installer && \
+    chmod +x nix-installer && \
+    ./nix-installer install linux --nix-package-url https://releases.nixos.org/nix/nix-2.28.3/nix-2.28.3-x86_64-linux.tar.xz --init none --no-confirm --extra-conf "filter-syscalls = false" && \
+    rm -f nix-installer
+## 更换 nix 二进制缓存源为国内源。
+RUN echo "substituters = https://mirror.sjtu.edu.cn/nix-channels/store https://cache.nixos.org" >> /etc/nix/nix.custom.conf
+RUN echo "trusted-public-keys = cache.nixos.org-1:6NCHdD59X431o0gWypbMrAURkbJ16ZPMQFGspcDShjY=" >> /etc/nix/nix.custom.conf
+## 锁定 nixpkgs 版本，请与 flake.nix 中的 nixpkgs-nix 版本保持一致。
+RUN nix registry add --registry /etc/nix/registry.json nixpkgs "https://ghfast.top/https://github.com/NixOS/nixpkgs/archive/11cb3517b3af6af300dd6c055aeda73c9bf52c48.tar.gz"
+
+# 上传用于缓存签名验证的密钥对，private.key 为私钥，nix-serve 启动时使用，public.key 为公钥，配置到客户端 trusted-public-keys 中使用。
+RUN mkdir -p /nix/serve
+COPY keys/nix-serve/private.key /nix/serve/private.key
+COPY keys/nix-serve/public.key /nix/serve/public.key
+
+# 安装配置 nix-serve
+RUN nix profile install nixpkgs#nix-serve
+
+# 配置 SSH，便于客户端上传缓存。
+RUN echo "root:nix@123" | chpasswd
+RUN sed -i 's/#PermitRootLogin prohibit-password/PermitRootLogin yes/g' /etc/ssh/sshd_config
+
+# 设置启动命令
+CMD ["/bin/bash", "-c", "service ssh start && NIX_SECRET_KEY_FILE=/nix/serve/private.key nix-serve --listen 0.0.0.0:80"]

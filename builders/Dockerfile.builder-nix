@@ -1,0 +1,84 @@
+FROM m.daocloud.io/docker.io/library/debian:bookworm
+
+# 设置 nix 命令路径，由于 docker build 是用 bash -c 的方式执行命令会找不到这些命令。
+ENV PATH=/nix/var/nix/profiles/default/bin:$PATH
+
+# 后续步骤默认 shell 为 bash。
+SHELL ["/bin/bash", "-c"]
+
+# 更换为国内镜像源
+RUN cd /etc/apt/sources.list.d/ && \
+    echo "Types: deb" > debian.sources && \
+    echo "URIs: http://mirrors.aliyun.com/debian" >> debian.sources && \
+    echo "Suites: bookworm bookworm-updates" >> debian.sources && \
+    echo "Components: main" >> debian.sources && \
+    echo "Signed-By: /usr/share/keyrings/debian-archive-keyring.gpg" >> debian.sources
+
+# 安装常用包
+# apt update 必须和 apt install 放在同一层，避免 Docker cache 复用旧索引后下载已下架的软件包导致 404。
+RUN apt update && apt install -y sudo wget vim curl ssh-client git locales
+
+# 配置 locale
+RUN sed -i 's/^# *en_US.UTF-8 UTF-8/en_US.UTF-8 UTF-8/' /etc/locale.gen
+RUN locale-gen
+RUN update-locale LANG=en_US.UTF-8
+RUN echo 'export LANG=en_US.UTF-8' >> /etc/profile
+RUN echo 'export LANG=en_US.UTF-8' >> /etc/bash.bashrc
+
+# 配置 vim 默认编码
+RUN echo "set encoding=utf-8" >> /etc/vim/vimrc
+RUN echo "set fileencoding=utf-8" >> /etc/vim/vimrc
+RUN echo "set fileencodings=utf-8,latin1" >> /etc/vim/vimrc
+
+# 不保留下载包等临时内容。
+WORKDIR /tmp
+
+# 下载并安装 nix 2.28.3。
+RUN wget https://ghfast.top/https://github.com/DeterminateSystems/nix-installer/releases/download/v3.5.2/nix-installer-x86_64-linux -O nix-installer && \
+    chmod +x nix-installer && \
+    ./nix-installer install linux --nix-package-url https://releases.nixos.org/nix/nix-2.28.3/nix-2.28.3-x86_64-linux.tar.xz --init none --no-confirm --extra-conf "filter-syscalls = false" && \
+    rm -f nix-installer
+# 更换 nix 二进制缓存源。
+COPY keys/nix-serve/public.key nixcache_pub.key
+RUN echo "substituters = http://pgflow-nixcache https://cache.nix4loong.cn https://mirror.sjtu.edu.cn/nix-channels/store https://cache.nixos.org https://nix-community.cachix.org" >> /etc/nix/nix.custom.conf
+RUN echo "trusted-public-keys = $(cat nixcache_pub.key) cache.nix4loong.cn-1:zmkwLihdSUyy6OFSVgvK3br0EaUEczLiJgDfvOmm3pA= cache.nixos.org-1:6NCHdD59X431o0gWypbMrAURkbJ16ZPMQFGspcDShjY=" >> /etc/nix/nix.custom.conf
+# 增加额外支持的平台。
+RUN echo "extra-platforms = aarch64-linux loongarch64-linux mips64el-linux" >> /etc/nix/nix.custom.conf
+# 增加 loongarch64 支持。
+RUN echo "extra-system-features = gccarch-la64v1.0 gccarch-loongarch64" >> /etc/nix/nix.custom.conf
+# 设置 tarball 缓存有效期为 100 年，对于 nixpkgs 和 flake-registry 均有效。
+RUN echo "tarball-ttl = 3155673600" >> /etc/nix/nix.custom.conf
+# 锁定默认 nixpkgs registry，避免 nix develop 解析到上游 unstable 后直连 GitHub，导致构建慢且不稳定。
+RUN nix registry add --registry /etc/nix/registry.json nixpkgs "https://ghfast.top/https://github.com/NixOS/nixpkgs/archive/11cb3517b3af6af300dd6c055aeda73c9bf52c48.tar.gz"
+
+# 构建编译环境。
+COPY flakes/ /root/flakes/
+RUN nix develop /root/flakes/#devShells.x86_64-linux.postgres -c uname -m
+RUN nix develop /root/flakes/#devShells.x86_64-linux.cpython -c uname -m
+RUN nix develop /root/flakes/#devShells.x86_64-linux.python -c uname -m
+RUN nix develop /root/flakes/#devShells.x86_64-linux.go -c uname -m
+RUN nix develop /root/flakes/#devShells.x86_64-linux.java -c uname -m
+RUN nix develop /root/flakes/#devShells.x86_64-linux.base -c uname -m
+RUN nix develop /root/flakes/#devShells.aarch64-linux.postgres -c uname -m
+RUN nix develop /root/flakes/#devShells.aarch64-linux.cpython -c uname -m
+RUN nix develop /root/flakes/#devShells.aarch64-linux.python -c uname -m
+RUN nix develop /root/flakes/#devShells.aarch64-linux.go -c uname -m
+RUN nix develop /root/flakes/#devShells.aarch64-linux.java -c uname -m
+RUN nix develop /root/flakes/#devShells.aarch64-linux.base -c uname -m
+RUN nix develop /root/flakes/#devShells.loongarch64-linux.postgres -c uname -m
+RUN nix develop /root/flakes/#devShells.loongarch64-linux.cpython -c uname -m
+RUN nix develop /root/flakes/#devShells.loongarch64-linux.python -c uname -m
+RUN nix develop /root/flakes/#devShells.loongarch64-linux.go -c uname -m
+RUN nix develop /root/flakes/#devShells.loongarch64-linux.java -c uname -m
+RUN nix develop /root/flakes/#devShells.loongarch64-linux.base -c uname -m
+RUN nix develop /root/flakes/#devShells.mips64el-linux.postgres -c uname -m
+RUN nix develop /root/flakes/#devShells.mips64el-linux.cpython -c uname -m
+RUN nix develop /root/flakes/#devShells.mips64el-linux.python -c uname -m
+RUN nix develop /root/flakes/#devShells.mips64el-linux.go -c uname -m
+RUN nix develop /root/flakes/#devShells.mips64el-linux.java -c uname -m
+RUN nix develop /root/flakes/#devShells.mips64el-linux.base -c uname -m
+
+WORKDIR /root
+
+# 设置容器默认启动命令。
+CMD ["/bin/bash", "-c", "nix-daemon"]
