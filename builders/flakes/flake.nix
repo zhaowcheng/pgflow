@@ -16,6 +16,7 @@
       let
         loongarch64LinuxOverlay = import ./overlays/loongarch64-linux.nix;
         pkgs = import ( if system == "loongarch64-linux" then nixpkgs-loong else nixpkgs-nix ) { 
+          inherit system;
           overlays =
             if system == "loongarch64-linux" then [ loongarch64LinuxOverlay ]
             else [ ];
