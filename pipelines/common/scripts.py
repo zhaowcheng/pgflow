@@ -95,20 +95,20 @@ def _join_colon(items: list[str] | tuple[str, ...]) -> str:
 def wrap_envs(
     node: Node,
     topdir: str | PurePosixPath,
-    bins: list[str] | tuple[str, ...],
+    bindir: str | PurePosixPath,
     envs: list[str] | tuple[str, ...]
 ) -> CommandResult:
     """
-    把 `topdir` 下指定的可执行程序替换为 shell 脚本并自动设置环境变量。
+    隐藏 topdir 下的 bin 目录，并为其中全部程序创建环境变量 wrapper。
 
     :param node: 执行节点。
-    :param topdir: 目标目录。
-    :param bins: 需要 wrap 的程序，相对 `topdir`。
+    :param topdir: wrapper 中 TOPDIR 对应的目标根目录。
+    :param bindir: 需要整体 wrap 的 bin 目录，相对 topdir。
     :param envs: 写入 wrapper 的环境变量，格式为 NAME=VALUE。
     :return: 脚本输出。
     """
     argstr = ' '.join(quote(item)
-                      for item in (str(topdir), _join_colon(bins), _join_colon(envs)))
+                      for item in (str(topdir), str(bindir), _join_colon(envs)))
     return node.exec_script('scripts/wrap_envs.sh',
                             argstr=argstr)
 

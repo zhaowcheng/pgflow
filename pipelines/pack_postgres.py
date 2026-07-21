@@ -144,7 +144,7 @@ class pack_postgres(pack_c):
         ]
         wrap_envs(self.node,
                   self.testsdir,
-                  self.test_env_bins,
+                  'tools/bin',
                   test_envs)
         # ECPG installcheck 会按 mtime 判断是否重生成测试程序；依赖包装后刷新产物时间戳，避免目标机重新调用 gcc。
         ecpg_testdir = self.testsdir.joinpath('src/src/interfaces/ecpg/test')
@@ -196,42 +196,8 @@ class pack_postgres(pack_c):
             ))
         wrap_envs(self.node,
                   elfdir,
-                  self.runtime_env_bins,
+                  'bin',
                   envs)
-
-    @property
-    def runtime_env_bins(self) -> tuple[str, ...]:
-        """
-        数据库运行时需要环境变量注入的程序。
-        """
-        return (
-            'bin/postgres',
-            'bin/pg_ctl',
-            'bin/initdb',
-            'bin/pg_upgrade',
-            'bin/pg_basebackup',
-            'bin/pg_combinebackup',
-            'bin/pg_verifybackup',
-            'bin/pg_receivewal',
-            'bin/pg_recvlogical',
-            'bin/pg_rewind',
-            'bin/pg_createsubscriber',
-            'bin/pg_amcheck',
-            'bin/pg_checksums',
-            'bin/pg_controldata',
-            'bin/pg_resetwal',
-            'bin/pg_waldump',
-            'bin/pg_walsummary',
-        )
-
-    @property
-    def test_env_bins(self) -> tuple[str, ...]:
-        """
-        测试运行时需要环境变量注入的程序。
-        """
-        return (
-            'tools/bin/perl',
-        )
 
     def teardown(self) -> None:
         """
