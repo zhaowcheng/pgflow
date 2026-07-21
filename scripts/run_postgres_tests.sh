@@ -10,6 +10,7 @@ case "$script" in
 esac
 script_dir=$(CDPATH= cd -- "$script_dir" && pwd)
 root=$script_dir
+pghome=$(CDPATH= cd -- "$root/.." && pwd)
 tools_bin=$root/tools/bin
 
 fix_test_interpreters() {
@@ -88,7 +89,7 @@ set -euo pipefail
 
 usage() {
     cat >&2 <<EOF
-Usage: $(basename "$0") PGHOME [make-target] [make-arg ...]
+Usage: $(basename "$0") [make-target] [make-arg ...]
 
 Default target: installcheck-world
 EOF
@@ -100,13 +101,6 @@ case "${1:-}" in
         exit 0
         ;;
 esac
-
-if [[ $# -lt 1 ]]; then
-    usage
-    exit 1
-fi
-pghome=$(CDPATH= cd -- "$1" && pwd)
-shift
 
 target=${1:-installcheck-world}
 if [[ $# -gt 0 ]]; then

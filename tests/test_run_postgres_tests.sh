@@ -7,14 +7,15 @@ repo_root=$(CDPATH= cd -- "$(dirname "$0")/.." && pwd)
 tmpdir=$(mktemp -d)
 trap 'rm -rf "$tmpdir"' EXIT
 
-root=$tmpdir/postgres-tests
+pghome=$tmpdir/pghome
+root=$pghome/tests
 mkdir -p \
+    "$pghome/bin" \
     "$root/lib/copied" \
     "$root/patchelf/bin" \
     "$root/patchelf/share/misc" \
     "$root/src" \
-    "$root/tools/bin" \
-    "$tmpdir/pghome/bin"
+    "$root/tools/bin"
 cp "$repo_root/scripts/run_postgres_tests.sh" "$root/run.sh"
 chmod +x "$root/run.sh"
 
@@ -59,15 +60,15 @@ if [ "$status" -ne 0 ]; then
     printf '%s\n' "$output" >&2
     exit "$status"
 fi
-printf '%s\n' "$output" | grep -F 'Usage: run.sh PGHOME [make-target] [make-arg ...]' >/dev/null
+printf '%s\n' "$output" | grep -F 'Usage: run.sh [make-target] [make-arg ...]' >/dev/null
 
-cat >"$tmpdir/pghome/bin/initdb" <<'EOF'
+cat >"$pghome/bin/initdb" <<'EOF'
 #!/bin/sh
 printf 'LANG=%s\nLC_ALL=%s\n' "${LANG:-}" "${LC_ALL:-}" >"$INITDB_ENV_FILE"
 exit 0
 EOF
 
-cat >"$tmpdir/pghome/bin/pg_ctl" <<'EOF'
+cat >"$pghome/bin/pg_ctl" <<'EOF'
 #!/bin/sh
 exit 0
 EOF
@@ -83,8 +84,8 @@ printf '%s\n' "$@" >"$MAKE_ARGS_FILE"
 EOF
 
 chmod +x \
-    "$tmpdir/pghome/bin/initdb" \
-    "$tmpdir/pghome/bin/pg_ctl" \
+    "$pghome/bin/initdb" \
+    "$pghome/bin/pg_ctl" \
     "$root/tools/bin/id" \
     "$root/tools/bin/make"
 : >"$root/tools/bin/mkdir"
@@ -101,8 +102,37 @@ INITDB_ENV_FILE=$tmpdir/initdb.env
 export MAKE_ARGS_FILE INITDB_ENV_FILE
 (
     cd "$root"
-    PGFLOW_TEST_WORKDIR=$tmpdir/work ./run.sh ../pghome installcheck-world >/dev/null
+    PGFLOW_TEST_WORKDIR=$tmpdir/work ./run.sh >/dev/null
 )
+
+if ! grep -Fx 'installcheck-world' "$MAKE_ARGS_FILE" >/dev/null; then
+    echo "missing default make target: installcheck-world" >&2
+    exit 1
+fi
+
+(
+    cd "$root"
+    PGFLOW_TEST_WORKDIR=$tmpdir/work ./run.sh installcheck EXTRA_FLAG=value >/dev/null
+)
+
+if ! grep -Fx 'installcheck' "$MAKE_ARGS_FILE" >/dev/null; then
+    echo "missing explicit make target: installcheck" >&2
+    exit 1
+fi
+if ! grep -Fx 'EXTRA_FLAG=value' "$MAKE_ARGS_FILE" >/dev/null; then
+    echo "missing extra make argument: EXTRA_FLAG=value" >&2
+    exit 1
+fi
+
+(
+    cd "$root"
+    PGFLOW_TEST_WORKDIR=$tmpdir/work ./run.sh "$pghome" >/dev/null
+)
+
+if ! grep -Fx "$pghome" "$MAKE_ARGS_FILE" >/dev/null; then
+    echo "old PGHOME argument was not treated as a make target" >&2
+    exit 1
+fi
 
 assert_make_arg() {
     if ! grep -Fx "$1" "$MAKE_ARGS_FILE" >/dev/null; then
