@@ -99,10 +99,8 @@ class pack_postgres(pack_c):
         """
         self.copy_deps()
         self.copy_instscript(self.packdir)
+        self.prepare_tests()
         self.archive(self.packdir, self.pkgname)
-        if self.options.include_tests:
-            self.copy_tests()
-            self.archive(self.testsdir, self.tests_pkgname)
 
     def copy_tests(self) -> None:
         """
