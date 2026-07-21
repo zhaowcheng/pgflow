@@ -80,7 +80,7 @@ for entry in "${entries[@]}"; do
     wrapper=$source_dir/${entry##*/}
     {
         cat <<EOF
-#!/bin/sh
+#!/bin/bash
 case "\$0" in
     */*) SELFDIR=\${0%/*} ;;
     *) SELFDIR=. ;;
@@ -91,7 +91,8 @@ EOF
         cat <<'EOF'
 BINDIRNAME=${SELFDIR##*/}
 PROGRAM=${0##*/}
-exec "$SELFDIR/../.$BINDIRNAME/$PROGRAM" "$@"
+VISIBLE_PROGRAM=$(CDPATH= cd -- "$SELFDIR" && pwd)/$PROGRAM
+exec -a "$VISIBLE_PROGRAM" "$SELFDIR/../.$BINDIRNAME/$PROGRAM" "$@"
 EOF
     } >"$wrapper"
     chmod 755 "$wrapper"

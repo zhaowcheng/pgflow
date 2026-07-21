@@ -104,7 +104,9 @@ def wrap_envs(
     :param node: 执行节点。
     :param topdir: wrapper 中 TOPDIR 对应的目标根目录。
     :param bindir: 需要整体 wrap 的 bin 目录，相对 topdir。
-    :param envs: 写入 wrapper 的环境变量，格式为 NAME=VALUE。
+    :param envs: 写入 wrapper 的内部可信 shell 模板，格式为 NAME=VALUE；
+        VALUE 会在 wrapper 运行时展开 $TOPDIR、$PATH 等变量，调用方不得传入
+        未校验的外部或用户输入。
     :return: 脚本输出。
     """
     argstr = ' '.join(quote(item)

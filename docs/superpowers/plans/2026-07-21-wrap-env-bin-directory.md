@@ -371,3 +371,11 @@ Expected: 状态 0，完整输出只保存在临时文件。
 Run: `git diff --check && git status --short`
 
 Expected: diff 检查无输出，状态只包含计划内文件或为空。
+
+## 最终审查修订
+
+- 在修改 wrapper 生成逻辑之前，先向 `tests/test_wrap_envs.sh` 加入编译型 C 探针，断言真实程序观察到的 `argv[0]` 及其 `realpath()` 都是可见 wrapper 路径。RED 必须显示 `.bin`，然后才允许进入 GREEN。
+- 将生成的 wrapper 改为 `/bin/bash`，通过 `exec -a` 把可见 wrapper 的绝对路径设置为真实程序的 `argv[0]`，避免 PostgreSQL 的 `find_my_exec()` / `make_relative_path()` 从 `.bin` 推导错误安装根目录。
+- 增加目录符号链接预检用例，保持真实目录及解析为目录的符号链接在目录移动前失败；受支持的符号链接只指向程序文件。
+- 在 Python docstring 与设计文档中明确：`envs` 是内部可信 shell 模板，值需要保留 `$TOPDIR`、`$PATH` 等运行时展开语义，调用方不得传入未校验的外部或用户输入。
+- 完整验证包括 `sh tests/test_wrap_envs.sh`、`bash -n scripts/wrap_envs.sh tests/test_wrap_envs.sh`、Python 接口测试、`compileall` 和 `tests/test_run_postgres_tests.sh`，并在报告中记录 RED/GREEN 的关键路径输出。
