@@ -106,13 +106,6 @@ class pack(Pipeline):
         """
         return f'{self.pkgstem}.tar.gz'
     
-    @property
-    def tests_pkgname(self) -> str:
-        """
-        测试包名。
-        """
-        return self.pkgname.replace(self.options.progname, f'{self.options.progname}-tests')
-
     def copy_instscript(
         self,
         destdir: str | PurePosixPath,
@@ -135,6 +128,13 @@ class pack(Pipeline):
         复制测试内容。具体包按需覆盖。
         """
         raise NotImplementedError
+
+    def prepare_tests(self) -> None:
+        """
+        根据流水线参数准备随程序包交付的测试内容。
+        """
+        if self.options.include_tests:
+            self.copy_tests()
 
 class pack_c(pack):
     """
