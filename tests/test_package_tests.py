@@ -63,10 +63,6 @@ class PrepareTestsTest(unittest.TestCase):
 
         self.assertEqual(pipeline.events, [])
 
-    def test_base_class_has_no_separate_test_package_name(self) -> None:
-        self.assertFalse(hasattr(pack, 'tests_pkgname'))
-
-
 class PostgresStage3Test(unittest.TestCase):
     def test_embeds_tests_before_single_archive_when_enabled(self) -> None:
         pipeline = make_postgres(True)

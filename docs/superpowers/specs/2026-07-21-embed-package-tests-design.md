@@ -67,7 +67,7 @@ tests/run.sh [make-target] [make-arg ...]
 - 旧式 `tests/run.sh PGHOME ...` 不再作为合法接口。
 - `pack_postgres` 在准备可选测试内容后只归档一次程序包。
 - `include_tests=False` 时不调用 `copy_tests()`。
-- 公共父类不再暴露独立测试包命名接口。
+- 通过源码扫描确认公共父类及其他生产代码不再暴露独立测试包命名接口。
 
 最终执行现有 shell 回归测试、Python 语法检查、目标流水线导入检查和变更范围的 diff 检查。若目标构建节点可用，再执行实际 PostgreSQL 打包并检查单一归档的目录内容；若未执行远端构建，交付说明必须明确这一验证边界。
 

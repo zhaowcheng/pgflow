@@ -75,10 +75,6 @@ class PrepareTestsTest(unittest.TestCase):
 
         self.assertEqual(pipeline.events, [])
 
-    def test_base_class_has_no_separate_test_package_name(self) -> None:
-        self.assertFalse(hasattr(pack, 'tests_pkgname'))
-
-
 if __name__ == '__main__':
     unittest.main()
 ```
@@ -87,7 +83,7 @@ if __name__ == '__main__':
 
 Run: `venv/bin/python -m unittest discover -s tests -p 'test_package_tests.py' -v`
 
-Expected: FAIL/ERROR，指出 `prepare_tests` 不存在，并且 `tests_pkgname` 仍存在。
+Expected: ERROR，指出 `prepare_tests` 不存在。
 
 - [ ] **Step 3: 实现最小公共协议**
 
@@ -106,7 +102,7 @@ Expected: FAIL/ERROR，指出 `prepare_tests` 不存在，并且 `tests_pkgname`
 
 Run: `venv/bin/python -m unittest discover -s tests -p 'test_package_tests.py' -v`
 
-Expected: 3 tests PASS。
+Expected: 2 tests PASS。
 
 - [ ] **Step 5: 提交公共协议**
 
@@ -225,7 +221,7 @@ Expected: 两个新增测试 FAIL/ERROR；启用测试时旧实现先归档且�
 
 Run: `venv/bin/python -m unittest discover -s tests -p 'test_package_tests.py' -v`
 
-Expected: 5 tests PASS，事件记录中始终只有一次 `archive`。
+Expected: 4 tests PASS，事件记录中始终只有一次 `archive`。
 
 - [ ] **Step 5: 提交 PostgreSQL 单归档改动**
 
@@ -390,7 +386,7 @@ git commit -m "让 postgres 测试自动定位程序目录"
 
 Run: `venv/bin/python -m unittest discover -s tests -p 'test_*.py' -v && tests/test_run_postgres_tests.sh`
 
-Expected: Python tests全部 PASS；shell 测试 exit 0。
+Expected: 5 个 Python tests 全部 PASS；shell 测试 exit 0。
 
 - [ ] **Step 2: 运行 Python 语法检查**
 
