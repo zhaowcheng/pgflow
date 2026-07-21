@@ -39,6 +39,12 @@ make_programs "$nested/tools/bin"
 output=$("$nested/tools/bin/alpha")
 printf '%s\n' "$output" | grep -Fx "ENV=$nested/lib" >/dev/null
 
+escaped="$tmpdir/escaped"
+make_programs "$escaped/bin"
+"$repo_root/scripts/wrap_envs.sh" "$escaped" bin 'WRAP_TEST_ENV=left\:right'
+output=$("$escaped/bin/alpha")
+printf '%s\n' "$output" | grep -Fx 'ENV=left:right' >/dev/null
+
 for case_name in conflict invalid child unsafe; do
     make_programs "$tmpdir/$case_name/bin"
 done

@@ -31,7 +31,7 @@ split_colon() {
     for ((i = 0; i < ${#input}; i++)); do
         ch=${input:i:1}
         if ((escaped)); then token+=$ch; escaped=0
-        elif [[ $ch == '\\' ]]; then escaped=1
+        elif [[ $ch == '\' ]]; then escaped=1
         elif [[ $ch == ':' ]]; then SPLIT_COLON_RESULT+=("$token"); token=
         else token+=$ch
         fi
