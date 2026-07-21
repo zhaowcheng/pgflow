@@ -408,7 +408,7 @@ Expected: exit 0，无匹配。
 
 - [ ] **Step 5: 检查变更质量与范围**
 
-Run: `git diff --check HEAD~3..HEAD && git status --short`
+Run: `git diff --check 34bc662..HEAD && git status --short`
 
 Expected: `git diff --check` exit 0；状态中只允许出现本实施计划文件，或者在计划也已提交时完全为空。
 
