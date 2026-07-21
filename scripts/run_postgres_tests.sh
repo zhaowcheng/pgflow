@@ -43,10 +43,12 @@ fix_test_interpreters() {
         exit 1
     fi
 
-    cd "$patchelf_dir" &&
+    (
+        cd "$patchelf_dir"
         LD_LIBRARY_PATH=null find "$root" \
             -path "$patchelf_dir" -prune -o \
-            -type f -exec ./bin/file -m ./share/misc/magic.mgc {} + |
+            -type f -exec ./bin/file -m ./share/misc/magic.mgc {} +
+    ) |
         awk -F: '/ELF/ && /executable/ && /dynamically/ {print $1}' |
         while IFS= read -r bin; do
             current=$(cd "$patchelf_dir" && LD_LIBRARY_PATH=null ./bin/patchelf --print-interpreter "$bin")
@@ -129,6 +131,8 @@ export PATH="$tools_bin:$pghome/bin:$PATH"
 export PERL5LIB="$root/lib/copied/perl:$srcdir/src/test/perl${PERL5LIB:+:$PERL5LIB}"
 export TCLLIBPATH="$pghome/lib/copied/tcl${TCLLIBPATH:+ $TCLLIBPATH}"
 export LOCALE_ARCHIVE="$pghome/lib/copied/locale-archive"
+export LANG=C
+export LC_ALL=C
 export PGHOST="$socketdir"
 export PGPORT="$port"
 export PGDATABASE=postgres
@@ -170,4 +174,12 @@ make "$target" \
     abs_top_builddir="$srcdir" \
     abs_top_srcdir="$srcdir" \
     PG_CONFIG="$pghome/bin/pg_config" \
+    GZIP_PROGRAM="$tools_bin/gzip" \
+    LZ4="$tools_bin/lz4" \
+    MKDIR_P="$tools_bin/mkdir -p" \
+    OPENSSL="$tools_bin/openssl" \
+    PERL="$tools_bin/perl" \
+    PROVE="$tools_bin/perl $tools_bin/prove" \
+    TAR="$tools_bin/tar" \
+    ZSTD="$tools_bin/zstd" \
     "$@"

@@ -25,6 +25,8 @@ class pack(Pipeline):
         nix_flakes_dir: str = Pipeline.Option(desc='Nix flakes directory.',
                                               default='~/flakes')
         nix_env_name: str = Pipeline.Option(desc='Nix shell environment name.')
+        include_tests: bool = Pipeline.Option(desc='Include package test files and test runtime tools.',
+                                              default=False)
 
         @property
         def arch(self) -> str:
@@ -44,6 +46,7 @@ class pack(Pipeline):
         self.codedir = self.node.cwd.joinpath('code')
         self.packdir = self.node.cwd.joinpath('package')
         self.instdir = self.packdir.joinpath('content')
+        self.testsdir = self.instdir.joinpath('tests')
         self.node.exec(f'mkdir -p {self.instdir}')
 
     def teardown(self) -> None:
@@ -102,6 +105,13 @@ class pack(Pipeline):
         包名。
         """
         return f'{self.pkgstem}.tar.gz'
+    
+    @property
+    def tests_pkgname(self) -> str:
+        """
+        测试包名。
+        """
+        return self.pkgname.replace(self.options.progname, f'{self.options.progname}-tests')
 
     def copy_instscript(
         self,
@@ -120,6 +130,11 @@ class pack(Pipeline):
                 self.node.exec(f'mv {script} install.sh')
             self.node.exec('chmod +x install.sh')
 
+    def copy_tests(self) -> None:
+        """
+        复制测试内容。具体包按需覆盖。
+        """
+        raise NotImplementedError
 
 class pack_c(pack):
     """
@@ -131,8 +146,6 @@ class pack_c(pack):
         """
         configure_options: Optional[str] = Pipeline.Option(desc='Configure options.',
                                                            default='')
-        include_tests: bool = Pipeline.Option(desc='Include package test files and test runtime tools.',
-                                              default=False)
 
     def setup(self) -> None:
         """
@@ -140,9 +153,6 @@ class pack_c(pack):
         """
         self.options: __class__.Options  # 保留用于自动提示
         super().setup()
-
-        # 变量定义
-        self.testsdir = self.instdir.joinpath('tests')
 
     def teardown(self) -> None:
         """
@@ -222,12 +232,6 @@ class pack_c(pack):
         self.node.exec(f'mkdir -p {test_tools_dir}')
         with self.nixenv():
             copy_runtime_tools(self.node, test_tools_dir, tool_names)
-
-    def copy_tests(self) -> None:
-        """
-        复制测试内容。具体包按需覆盖。
-        """
-        raise NotImplementedError
 
     def copy_deps(
         self,

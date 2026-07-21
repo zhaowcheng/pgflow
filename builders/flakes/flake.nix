@@ -46,6 +46,7 @@
           buildInputs = [
             # general
             glibcLocales
+            pkgs.glibc.bin
             pkgs.autoconf
             pkgs.automake
             pkgs.libtool

@@ -4,7 +4,7 @@ from typing_extensions import Self
 
 from xflow.framework.pipeline import Pipeline
 from .common.pack import pack_c
-from .common.scripts import copy_perl, copy_python, copy_tcl, wrap_envs
+from .common.scripts import copy_perl, copy_python, copy_runtime_tools, copy_tcl, wrap_envs
 
 from pydantic import model_validator
 
@@ -43,6 +43,7 @@ class pack_postgres(pack_c):
                                          '--with-gssapi ' \
                                          '--with-ldap ' \
                                          '--with-pam ' \
+                                         '--with-icu ' \
                                          '--with-ossp-uuid ' \
                                          '--with-libnuma ' \
                                          '--with-liburing ' \
@@ -63,8 +64,6 @@ class pack_postgres(pack_c):
         super().setup()
 
         self.configure_options = (self.options.configure_options or '') + f' --prefix={self.instdir}'
-        self.testpackdir = self.node.cwd.joinpath('test_package')
-        self.testsdir = self.testpackdir
 
     def stage1(self) -> None:
         """
@@ -103,7 +102,7 @@ class pack_postgres(pack_c):
         self.archive(self.packdir, self.pkgname)
         if self.options.include_tests:
             self.copy_tests()
-            self.archive(self.testpackdir, self.test_pkgname)
+            self.archive(self.testsdir, self.tests_pkgname)
 
     def copy_tests(self) -> None:
         """
@@ -127,8 +126,13 @@ class pack_postgres(pack_c):
                        f'{self.testsdir.joinpath("run.sh")}')
         self.node.exec(f'chmod +x {self.testsdir.joinpath("run.sh")}')
         self.copy_test_tools((
+            'gzip',
+            'locale',
+            'lz4',
+            'openssl',
             'perl',
             'prove',
+            'zstd',
         ))
         test_perldir = self.testsdir.joinpath('lib/copied/perl')
         with self.nixenv():
@@ -152,13 +156,6 @@ class pack_postgres(pack_c):
         self.node.exec(f'find {ecpg_testdir} -type f -perm -111 -exec touch {{}} +')
         self.node.exec(f'find {self.testsdir} -type f -name "*.c" -delete')
 
-    @property
-    def test_pkgname(self) -> str:
-        """
-        测试包名。
-        """
-        return f'postgres-tests-{self.version}-{self.options.system}-glibc{self.glibc_version}.tar.gz'
-
     def copy_deps(self) -> None:
         """
         拷贝依赖，并补充 PL/Perl 和 PL/Python 运行时需要的库。
@@ -177,10 +174,12 @@ class pack_postgres(pack_c):
             if '--with-tcl' in self.configure_options:
                 tcldir = elfdir.joinpath('lib/copied/tcl')
                 copy_tcl(self.node, tcldir)
+            copy_runtime_tools(self.node, elfdir, ('locale',))
 
         super().copy_deps(elfdir,
                           copylocales=True)
         envs = [
+            'PATH=$TOPDIR/bin:$PATH',
             'LOCALE_ARCHIVE=$TOPDIR/lib/copied/locale-archive',
         ]
         if pythondir is not None:
