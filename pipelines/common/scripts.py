@@ -159,19 +159,3 @@ def copy_tcl(
     return node.exec_script('scripts/copy_tcl.sh',
                             argstr=f'{destdir}')
 
-
-def copy_runtime_tools(
-    node: Node,
-    destdir: str | PurePosixPath,
-    tools: list[str] | tuple[str, ...]
-) -> CommandResult:
-    """
-    把构建环境 PATH 中的工具复制到 `destdir/bin`。
-
-    :param node: 执行节点。
-    :param destdir: 工具目录。
-    :param tools: 工具名列表。
-    :return: 脚本输出。
-    """
-    return node.exec_script('scripts/copy_runtime_tools.sh',
-                            argstr=' '.join([str(destdir), *tools]))
